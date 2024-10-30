@@ -1,7 +1,8 @@
 [build]
   command = """
-    git clone --filter=blob:none https://github.com/ajay-kumar2109/Ghostchat build-dir && 
-    cd build-dir && 
+    rm -rf build-dir || true &&
+    git clone --filter=blob:none https://github.com/ajay-kumar2109/Ghostchat build-dir &&
+    cd build-dir &&
     pip install -r requirements.txt
   """
   publish = "build-dir/templates"
