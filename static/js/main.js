@@ -11,12 +11,14 @@ function formatTime(timestamp) {
 function createMessageElement(message) {
     const div = document.createElement('div');
     div.className = 'message';
-    div.classList.add(message.user_id === document.getElementById('userId').textContent ? 'sent' : 'received');
+    
+    // Add sent/received class based on user ID
+    const currentUserId = document.getElementById('userId').textContent;
+    div.classList.add(message.user_id === currentUserId ? 'sent' : 'received');
     
     const header = document.createElement('div');
     header.className = 'header';
     header.textContent = `User${message.user_id} • ${formatTime(message.timestamp)}`;
-    div.appendChild(header);
     
     const content = document.createElement('div');
     content.className = 'content';
@@ -42,6 +44,7 @@ function createMessageElement(message) {
             break;
     }
     
+    div.appendChild(header);
     div.appendChild(content);
     return div;
 }
@@ -83,6 +86,33 @@ function showAttachmentPreview(file) {
     preview.appendChild(fileInfo);
 }
 
+async function loadMessages() {
+    try {
+        console.log('Fetching messages...');
+        const response = await fetch('/api/messages');
+        const messages = await response.json();
+        console.log('Received messages:', messages);
+        
+        const container = document.getElementById('messageContainer');
+        
+        // Only update if we have new messages
+        if (messages.length !== lastMessageCount) {
+            console.log('Updating messages in container');
+            container.innerHTML = '';
+            
+            messages.forEach(message => {
+                container.appendChild(createMessageElement(message));
+            });
+            
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+            lastMessageCount = messages.length;
+        }
+    } catch (error) {
+        console.error('Error loading messages:', error);
+    }
+}
+
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
@@ -116,7 +146,8 @@ async function sendMessage() {
         }
 
         if (content) {
-            await fetch('/api/messages', {
+            console.log('Sending message:', content);
+            const response = await fetch('/api/messages', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -126,10 +157,15 @@ async function sendMessage() {
                     type: 'text'
                 })
             });
-            input.value = '';
+            
+            if (response.ok) {
+                console.log('Message sent successfully');
+                input.value = '';
+                await loadMessages();
+            } else {
+                console.error('Failed to send message:', await response.text());
+            }
         }
-        
-        await loadMessages();
     } catch (error) {
         console.error('Error sending message:', error);
     }
@@ -144,27 +180,6 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     }
 });
 
-async function loadMessages() {
-    try {
-        const response = await fetch('/api/messages');
-        const messages = await response.json();
-        
-        if (messages.length !== lastMessageCount) {
-            const container = document.getElementById('messageContainer');
-            container.innerHTML = '';
-            
-            messages.forEach(message => {
-                container.appendChild(createMessageElement(message));
-            });
-            
-            container.scrollTop = container.scrollHeight;
-            lastMessageCount = messages.length;
-        }
-    } catch (error) {
-        console.error('Error loading messages:', error);
-    }
-}
-
 // Add event listener for Enter key
 document.getElementById('messageInput').addEventListener('keypress', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -173,8 +188,38 @@ document.getElementById('messageInput').addEventListener('keypress', function(e)
     }
 });
 
-// Check for new messages every 1 second
-setInterval(loadMessages, 1000);
+// Emoji picker setup
+const emojiButton = document.getElementById('emojiButton');
+const emojiPicker = document.getElementById('emojiPicker');
+let picker = null;
+
+emojiButton.addEventListener('click', () => {
+    if (!picker) {
+        picker = new EmojiMart.Picker({
+            onSelect: emoji => {
+                const input = document.getElementById('messageInput');
+                input.value += emoji.native;
+                input.focus();
+            }
+        });
+        emojiPicker.appendChild(picker);
+    }
+    emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+});
+
+// Close emoji picker when clicking outside
+document.addEventListener('click', (e) => {
+    if (!emojiPicker.contains(e.target) && e.target !== emojiButton) {
+        emojiPicker.style.display = 'none';
+    }
+});
+
+// Load messages more frequently (every 500ms)
+setInterval(loadMessages, 500);
 
 // Initial load
+console.log('Starting application...');
 loadMessages();
+
+// Add this to check if the script is running
+console.log('Chat script loaded and running');
