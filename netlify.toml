@@ -1,14 +1,6 @@
 [build]
-  command = """
-    rm -rf build-dir || true &&
-    git clone --filter=blob:none https://github.com/ajay-kumar2109/Ghostchat build-dir &&
-    cd build-dir &&
-    pip install -r requirements.txt &&
-    mkdir -p dist &&
-    cp -r templates/* dist/ &&
-    cp -r static dist/
-  """
-  publish = "build-dir/dist"
+  command = "pip install -r requirements.txt"
+  publish = "."
 
 [build.environment]
   PYTHON_VERSION = "3.9"
@@ -17,3 +9,8 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[headers]]
+  for = "/*"
+    [headers.values]
+    Access-Control-Allow-Origin = "*"
